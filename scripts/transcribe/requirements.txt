@@ -1,0 +1,12 @@
+# Kun til VALGFRI talerseparation (stemmeopdeling) i mødetransskriptet.
+# Uden disse pakker virker notetakeren stadig. Så står alle de andre i mødet som "De".
+#
+# Kræver Python 3.10 til 3.12 (pyannote/torch var i testen ikke prøvet på nyere Python).
+# Installeres i et eget miljø: scripts/transcribe/setup-diarization.sh
+#
+# Versionen er den, der blev prøvet. Pakken trækker torch og flere andre pakker med (flere GB).
+# ANTAGET: pyannote.audio indeholder en klient til pyannoteAI's betalte skytjeneste (pyannoteai-sdk).
+# Diktats scripts bruger den ikke og kalder aldrig tjenesten, men koden ligger i pakken.
+# pyannote.audio 4.0.7 har målinger slået til som standard (config.yaml: metrics_enabled true, endpoint otel.pyannote.ai).
+# Diktats scripts sætter PYANNOTE_METRICS_ENABLED=0 før import, så der sendes intet.
+pyannote.audio==4.0.7

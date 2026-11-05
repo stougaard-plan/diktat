@@ -1,0 +1,207 @@
+OPSÆTNING AF DIKTAT PÅ DENNE MAC
+=================================
+
+Du er en AI-agent (Claude Code, Codex eller lignende) og skal hjælpe brugeren med at sætte Diktat op på brugerens Mac. Diktat er en lokal dikteringsapp og møde-notetaker. Den er en ændret udgave af VoiceInk og IKKE VoiceInk-projektets officielle udgave. Repoet er https://github.com/stougaard-plan/diktat.
+
+Tal dansk med brugeren. Brug korte sætninger. Brugeren er ikke udvikler, så forklar, hvad hvert trin gør, før du gør det.
+
+REGLER, DER GÆLDER HELE VEJEN
+-----------------------------
+
+1. Spørg brugeren FØR hver installation og FØR hver stor download. Sig, hvad det er, hvor stort det er, og hvorfor det skal bruges. Vent på et ja. Stil ét spørgsmål ad gangen.
+2. Brug ikke sudo uden at spørge. Skal en kommando bruge administratoradgang, så sig det, forklar hvorfor, og lad brugeren selv beslutte. Skriv aldrig brugerens adgangskode noget sted.
+3. Går noget galt, så STOP og forklar fejlen på almindeligt dansk. Undtagelser: i Trin 1 er manglende Xcode forventet, og i Trin 3 er manglende værktøjer (git, cmake, brew, whisper-cli, ffmpeg) forventet. Det er ikke fejl, se der. De betyder blot, at brugeren skal spørges om en installation. Gæt ikke på en omvej. Slå ikke Gatekeeper, signaturtjek eller andre sikkerhedsindstillinger fra. Spring ikke et trin over. Prøv ikke "så alligevel" med andre værktøjer. Brugeren beslutter, hvad der sker nu.
+4. Send aldrig lyd, optagelser eller transskripter nogen steder. Du må heller ikke selv læse dem. Din egen samtale går til en AI-udbyder. Det du læser, bliver dermed sendt af sted. Tjek kun, at filer findes og hvor store de er. Brugeren læser selv indholdet.
+5. Installér kun det, der står her. Ryd op efter dig selv i midlertidige filer. Rør ikke andre apps, andre brugere eller brugerens private mapper.
+6. Start ikke appen, før brugeren har sagt ja til det. Lad brugeren selv trykke på tilladelserne.
+7. Sig til, hvis du er i tvivl om en kommando. Læs hellere README.md i repoet end at gætte.
+
+TRIN 0. FORKLAR OG FÅ ET JA
+---------------------------
+
+Fortæl kort, hvad der skal ske: Xcode skal være på Macen. Repoet hentes. Appen bygges på Macen. Der hentes en sprogmodel. Appen lægges i ~/Applications. Brugeren giver tre tilladelser. Til sidst en kort prøve.
+
+Fortæl også, hvad det kræver: 20 GB ledig plads er rigeligt, og første bygning tog ca. 5 minutter på en hurtig forbindelse, regn med op til en halv time. Spørg, om I skal i gang.
+
+TRIN 1. TJEK MACEN
+------------------
+
+Kør og vis resultatet. Kør dem én ad gangen:
+  uname -m
+  sw_vers
+  df -h ~
+  xcode-select -p
+  find /Applications -maxdepth 1 -name 'Xcode*.app'
+  xcodebuild -version
+
+Mangler Xcode, kan xcode-select -p og xcodebuild -version svare med en fejl, og find finder ingenting. Det er FORVENTET og ikke en fejl. Det betyder blot, at Trin 2 skal gøre noget. Gå videre til Trin 2 uden at stoppe. (Brug find og ikke ls med en stjerne. zsh melder "no matches found", når stjernen ikke finder noget.)
+
+- Svarer uname -m "arm64", er det en Mac med Apple silicon. Det er den eneste type, Diktat er prøvet på. Svarer den "x86_64" (Intel), så STOP og sig, at det ikke er prøvet og sandsynligvis ikke virker.
+- Diktat er bygget og prøvet på macOS 26.3 med Xcode 26.6. Projektet kræver mindst macOS 15, men det er ikke prøvet. Er macOS ældre end 15, så STOP.
+- Under 20 GB ledig plads: sig det, og spørg brugeren, om I skal fortsætte.
+
+TRIN 2. XCODE
+-------------
+
+Xcode er Apples udviklingsprogram. Det er gratis og hentes med et Apple-id. Det bruges kun til at bygge appen.
+
+- Er Xcode installeret, og viser xcodebuild -version en version, er trinnet klaret.
+- Mangler Xcode: forklar, at det kan hentes fra developer.apple.com/download (log ind med Apple-id) eller fra App Store. Størrelsen står ved hentningen og er flere GB. Kontrollér hvilken macOS-version netop den Xcode-version kræver (står på hentesiden og i Apples udgivelsesnoter). Kræver den en nyere macOS end brugerens, så STOP og sig det. Lad brugeren selv hente og installere Xcode. Hent det ikke for brugeren.
+- Skriver xcodebuild noget om en licens eller første opstart, så bed brugeren åbne Xcode én gang og acceptere vilkårene. Det kræver ikke sudo.
+- Kør ikke xcode-select --switch uden at spørge. Peg i stedet på Xcode med DEVELOPER_DIR. Find stien med find-kommandoen fra Trin 1 (normalt /Applications/Xcode.app). Skriv exporten FØRST i HVER kommando, der bygger, for en agents skal beholder ikke altid variabler mellem kommandoer:
+    export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer; <kommandoen>
+  Kør derefter xcodebuild -version med samme DEVELOPER_DIR, og vis versionen. Viser den ikke en version, er det ikke det rigtige Xcode, og du stopper og spørger.
+- Er DEVELOPER_DIR ikke sat, vælger Makefile og scripts/build-diktat.sh selv /Applications/Xcode.app eller det Xcode, xcode-select peger på, og eksporterer det til alle byggetrin. Sæt den alligevel, hvis Xcode ligger et andet sted.
+
+TRIN 3. VÆRKTØJER
+-----------------
+
+Tjek hvad der findes. Kør dem ÉN ad gangen, og vis resultatet. Et værktøj, der mangler, giver ingen udskrift og en fejlkode. Det er FORVENTET og ikke en fejl, og du stopper ikke. Du noterer blot, hvad der mangler, og spørger om det under de enkelte punkter nedenfor:
+  command -v git
+  command -v cmake
+  command -v brew
+  command -v whisper-cli
+  command -v ffmpeg
+  [ -x /opt/homebrew/bin/brew ] && echo "brew findes i /opt/homebrew/bin"
+  [ -x /usr/local/bin/brew ] && echo "brew findes i /usr/local/bin"
+  [ -x /opt/homebrew/bin/cmake ] && echo "cmake findes i /opt/homebrew/bin"
+  [ -x /opt/homebrew/bin/ffmpeg ] && echo "ffmpeg findes i /opt/homebrew/bin"
+  [ -x /opt/homebrew/bin/whisper-cli ] && echo "whisper-cli findes i /opt/homebrew/bin"
+(Tjek stierne enkeltvis som her. Brug ikke ls med flere stier, for ls fejler, hvis blot én af dem mangler. Giver en kommando ingen udskrift, er svaret nej, ikke at noget er gået galt.)
+
+- git følger med Xcode.
+- Tjek Homebrew FØRST, før du foreslår noget som helst, der bruger brew (de to tjek ovenfor, brew på PATH eller i en af de to mapper).
+  Ligger brew uden for PATH (typisk /opt/homebrew/bin/brew på Apple silicon), er Homebrew installeret. Brug da den fulde sti, eller sæt PATH kun i den enkelte kommando: eval "$(/opt/homebrew/bin/brew shellenv)"; brew --version. Ret ikke brugerens skal-filer (.zshrc, .zprofile).
+- Mangler Homebrew helt: STOP ved dette punkt og forklar. Homebrew kræver administratoradgang, og du installerer det aldrig selv. Brugeren vælger: (a) selv at installere det fra brew.sh og sige til bagefter, eller (b) at stoppe her. Uden Homebrew (eller cmake på anden vis) kan Trin 5 ikke gennemføres.
+- GENOPTAGELSE efter samtykke: når brugeren siger, at Homebrew er installeret, så kør tjekket ovenfor igen (brugerens skal kan have ny PATH), og fortsæt fra dette punkt. Gentag ikke Trin 1 og 2. Er brugeren holdt op og kommer tilbage senere, så tjek, hvad der allerede findes (mappen fra Trin 4, ~/VoiceInk-Dependencies osv.), og fortsæt derfra.
+- cmake skal bruges til at bygge whisper.cpp. Installeres med: brew install cmake. Spørg først. Homebrews mapper er ikke altid i PATH i en agents skal. Derfor står PATH-linjen med i HVER byggekommando i Trin 5 og 7, og Trin 5 starter med command -v cmake.
+- whisper-cli og ffmpeg skal bruges af notetakeren: brew install whisper-cpp ffmpeg (ca. 100 til 300 MB i alt). Spørg først.
+
+TRIN 4. HENT REPOET
+-------------------
+
+Spørg, hvor mappen skal ligge. Forslag: ~/diktat. Kald den valgte sti DIKTAT_DIR i resten af denne prompt, og brug den i ALLE senere trin (5 til 8 og 14), ikke ~/diktat. Skriv den fulde sti i hver kommando. Kør:
+  git clone https://github.com/stougaard-plan/diktat.git "<DIKTAT_DIR>"
+  cd "<DIKTAT_DIR>"
+  git log --oneline -1
+
+Vis commit-nummeret til brugeren. Kør ikke noget andet fra repoet endnu end det, der står her. Læs gerne README.md og scripts/setup-signing.sh og scripts/build-diktat.sh, før du kører dem, så du kan forklare dem.
+
+TRIN 5. BYG WHISPER.CPP
+-----------------------
+
+Appen bruger whisper.cpp. Det hentes fra GitHub og bygges lokalt, kun til macOS (ikke iOS, tvOS eller visionOS). Det fylder ca. 1,5 GB i ~/VoiceInk-Dependencies og tager nogle minutter.
+
+Tjek først, at Macen kan bygge det, FØR du spørger om at starte. Det henter intet:
+  export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer; export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"; cd "<DIKTAT_DIR>" && make check
+Det viser Xcode-versionen og tjekker macOS-SDK og Metal-komponenten. Mangler Metal-komponenten (ca. 700 MB), så forklar, hvad den er til, og SPØRG, før du kører den. Hent den ikke, før brugeren har sagt ja. Kør den med SAMME Xcode som bygningen: export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer; xcodebuild -downloadComponent MetalToolchain. Kør derefter make check igen.
+
+Tjek, at cmake kan findes med Homebrews PATH, FØR du spørger om at starte:
+  export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"; command -v cmake
+Giver den ingen sti, så er cmake ikke installeret. Tilbage til Trin 3.
+
+Så spørg om lov til selve bygningen og kør (begge exports står i HVER kommando, for en agents skal beholder ikke variabler mellem kommandoer):
+  export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer; export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"; cd "<DIKTAT_DIR>" && make whisper > /tmp/diktat-whisper.log 2>&1; echo "slut: $?"
+
+Findes ~/VoiceInk-Dependencies/whisper.cpp/build-apple/whisper.xcframework allerede, springer make over. Fejler det, så vis de sidste 30 linjer af loggen og STOP.
+
+TRIN 6. LOKALT SIGNERINGSCERTIFIKAT (ANBEFALET)
+-----------------------------------------------
+
+macOS husker tilladelser (mikrofon, systemlyd, tilgængelighed) ud fra appens signatur. Uden fast signatur spørger macOS igen efter hver ny bygning. Scriptet opretter et selvsigneret certifikat i brugerens egen nøglering. Det er ikke Apples, koster ikke noget og gælder kun på denne Mac.
+  cd "<DIKTAT_DIR>" && scripts/setup-signing.sh --ja
+
+Forklar først og spørg. Scriptet ændrer ingenting uden --ja (eller et svar i en terminal), så --ja må kun stå med, når brugeren HAR sagt ja. Er der allerede flere certifikater med samme navn, stopper scriptet og vælger ikke selv. macOS kan bede om brugerens Mac-adgangskode for nøgleringen. Brugeren skriver den selv. Siger brugeren nej, eller fejler scriptet (eller stopper det, fordi der er flere certifikater med samme navn), så fortsæt UDEN certifikat. Byg da i Trin 7 med DIKTAT_CODESIGN_IDENTITY=- foran make, så er valget udtrykkeligt, og scriptet ikke leder efter et certifikat. Appen signeres så "ad hoc" med en advarsel. Sig tydeligt til brugeren, at tilladelserne så skal gives igen efter hver ny bygning.
+
+TRIN 7. BYG APPEN
+-----------------
+
+Forklar, at første bygning henter en række Swift-pakker fra GitHub og kan tage lang tid. Kør i forgrunden med log til fil og vent, til den er færdig:
+  export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer; export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"; cd "<DIKTAT_DIR>" && make local > /tmp/diktat-build.log 2>&1; echo "slut: $?"
+Uden certifikat (valgte brugeren det fra i Trin 6): samme kommando, men med DIKTAT_CODESIGN_IDENTITY=- lige før make:
+  export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer; export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"; cd "<DIKTAT_DIR>" && DIKTAT_CODESIGN_IDENTITY=- make local > /tmp/diktat-build.log 2>&1; echo "slut: $?"
+
+- Står der i loggen, at en Metal-komponent mangler ("missing Metal Toolchain"), så forklar, at Xcode skal hente en komponent på ca. 700 MB (make check i Trin 5 skulle have fanget det). Spørg, og kør derefter med samme Xcode som bygningen:
+    export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer; xcodebuild -downloadComponent MetalToolchain
+  og byg igen.
+- Fejler bygningen af anden grund, så vis de sidste 30 linjer af loggen og STOP. Ret ikke i kildekoden for at komme videre.
+- Lykkes den, ligger appen i <DIKTAT_DIR>/.local-build/Build/Products/Release/Diktat.app. Scriptet har kontrolleret signaturen. Vis den linje, der starter med "Krav:".
+- Start IKKE bygge-kopien. Den skal ligge i ~/Applications.
+
+TRIN 8. LÆG APPEN PÅ PLADS
+--------------------------
+
+Findes ~/Applications/Diktat.app allerede, så spørg, før den overskrives, og flyt den gamle til ~/Diktat-backup-<dato> i stedet for at slette den.
+  mkdir -p ~/Applications
+  ditto "<DIKTAT_DIR>/.local-build/Build/Products/Release/Diktat.app" ~/Applications/Diktat.app
+  codesign --verify --deep --strict ~/Applications/Diktat.app && echo "signatur ok"
+
+TRIN 9. SPROGMODEL
+------------------
+
+Appen kan bruge flere modeller. Til dansk anbefales Whisper large-v3-turbo-q5_0, låst til dansk. Den fylder ca. 547 MiB (574.041.195 bytes) og hentes fra huggingface.co. I en lille prøve (45 klip syntetisk tale og 7 optagelser) svarede den på forkert sprog ved ét af klippene. Parakeet V3 (ca. 494 MB) er valgfri. Den er hurtig, men kan ikke låses til dansk og kan på korte klip svare på engelsk eller fransk. Startvinduet kræver kun én sprogmodel, og en installeret Whisper-model tæller.
+
+Spørg om lov, og hent derefter modellen ÉN gang. Notetakeren og dikteringen bruger hver deres mappe, så filen lægges begge steder. På APFS tager anden kopi ingen ekstra plads:
+  mkdir -p ~/.whisper-models
+  curl --fail --location -o ~/.whisper-models/ggml-large-v3-turbo-q5_0.bin.hentes \
+    https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin; echo "curl: $?"
+  ls -l ~/.whisper-models/ggml-large-v3-turbo-q5_0.bin.hentes
+
+Tjek exitkoden (skal være 0) og størrelsen (skal være 574041195 bytes) FØR du går videre. Er en af dem forkert, så slet .hentes-filen og STOP: hentningen er ikke gået godt. Er begge rigtige, så flyt og kopiér:
+  mv ~/.whisper-models/ggml-large-v3-turbo-q5_0.bin.hentes ~/.whisper-models/ggml-large-v3-turbo-q5_0.bin
+  mkdir -p "$HOME/Library/Application Support/local.diktat.app/WhisperModels"
+  cp -c ~/.whisper-models/ggml-large-v3-turbo-q5_0.bin "$HOME/Library/Application Support/local.diktat.app/WhisperModels/"
+
+Her er filens størrelse kontrolleret. Er den ikke 574041195 bytes, så STOP: hentningen er ikke gået godt. Brug ikke curl med andre afsendere eller proxyer.
+
+Stemmeaktivitetsfilteret (Silero VAD) følger med appen og repoet. Det skal ikke hentes.
+
+TRIN 10. VALGFRIT, SPRING OVER MED MINDRE BRUGEREN BEDER OM DET
+--------------------------------------------------------------
+
+- Stemmeopdeling i møder (hvem der siger hvad blandt de andre). Kræver Python 3.12, flere GB pakker, en konto på huggingface.co og et token. I testen delte den én stemme i tre. Se scripts/transcribe/README.md. Gem aldrig tokenet i en fil. Foreslå det ikke af dig selv. Henter den modellerne, kræver det et SÆRSKILT ja til scripts/transcribe/setup-diarization.sh --hent-modeller. Uden det hentes der intet.
+- Mødetitel fra en lokal Ollama-model og oprydning af tekst. Begge er slået fra, og det skal de blive, med mindre brugeren selv har en Ollama kørende og beder om det.
+
+TRIN 11. FØRSTE OPSTART OG TILLADELSER
+--------------------------------------
+
+Spørg, om du må åbne appen: open ~/Applications/Diktat.app
+
+Appen viser et startvindue. Brugeren gør selv følgende. Hjælp ved at forklare, hvor man trykker. Navnene i Systemindstillinger kan afvige lidt fra version til version.
+
+1. Mikrofon: tryk "Giv adgang" i appen og svar Tillad.
+2. Hjælpemidler (tilgængelighed): Systemindstillinger > Anonymitet og sikkerhed > Tilgængelighed. Slå Diktat til. Appen bruger det til at skrive teksten ind, hvor markøren står.
+3. Sprogmodel: startvinduet kræver én sprogmodel, før "Færdig" kan trykkes. Har brugeren lagt Whisper-modellen på plads i Trin 9, tæller den, og der skal ikke hentes mere. Ellers tilbyder vinduet at hente Whisper large-v3-turbo-q5_0 (ca. 547 MB, anbefalet til dansk). Parakeet V3 er valgfri og skal ikke hentes. Siger brugeren nej til en hentning, blokerer det ikke, hvis der allerede er en model.
+4. Genvejstast til diktering: brugeren vælger selv.
+5. Systemlyd (til møder): macOS spørger første gang, notetakeren optager. Brugeren trykker Tillad. Ellers: Systemindstillinger > Anonymitet og sikkerhed > Skærm- og systemlydoptagelse. Her skal Diktat stå under "Kun systemlyd" eller tilsvarende. Slå den til.
+
+Appen kan bede om flere ting (fx automatisering for browserfaner). Brugeren kan sige nej til dem. Det er kun til valgfrie funktioner.
+
+TRIN 12. VÆLG DANSK MODEL I APPEN
+---------------------------------
+
+Brugeren åbner AI-modeller i appens sidemenu. Under aktiv transskriberingsmodel kontrolleres det, at "Large v3 Turbo (Quantized)" er valgt (startvinduet vælger den selv, hvis den er installeret), og at sproget er Dansk. Er modellen ikke på listen, så luk og åbn appen igen. Mødetitel og oprydning står på FRA.
+
+TRIN 13. KORT PRØVE
+-------------------
+
+Brug ikke lyd, du selv har fundet. Det er brugerens egne ord, og de skal ikke ud af Macen.
+
+Diktering: bed brugeren åbne TextEdit, holde markøren i et tomt dokument og diktere én kort sætning med genvejstasten. Teksten skal komme ind ved markøren. Spørg brugeren, om den ser rigtig ud. Du må ikke selv læse den.
+
+Møde: bed brugeren trykke Control+Option+M (eller starte under Møder i appen), tale i omkring et minut mens der også spilles noget lyd fra computeren, og trykke igen for at stoppe. Transskriptionen starter af sig selv og står som "klar" i Møder. Tjek kun, at mappen ~/Moeder/<dato> findes, at den indeholder transskript.txt, og hvor stor filen er (ls -l). Læs ikke indholdet. Brugeren læser teksten og siger, om den ligner det, der blev sagt.
+
+Står der en fejl i Møder, så bed brugeren læse den højt. Typiske årsager: whisper-cli eller ffmpeg mangler (trin 3), modellen mangler i ~/.whisper-models (trin 9), systemlyd er ikke tilladt (trin 11).
+
+TRIN 14. AFSLUT
+---------------
+
+Sig til brugeren, i få linjer:
+- Hvad der er installeret og hvor: ~/Applications/Diktat.app, <DIKTAT_DIR>, ~/VoiceInk-Dependencies, ~/.whisper-models, evt. certifikatet "Diktat Lokal Signering" i nøgleringen.
+- At appen ikke opdaterer sig selv. Nye versioner kræver git pull og en ny bygning.
+- At Diktat ikke er VoiceInk-projektets udgave. Fejl meldes i Diktats eget repo.
+- At transskripter skal læses efter. Tal, navne og fagord kan være forkerte.
+- At brugeren selv har ansvaret for at oplyse om optagelse af møder, og at tavshed ikke er samtykke. Se afsnittet om samtykke i README.md.
+- Hvordan det fjernes igen: slet ~/Applications/Diktat.app, ~/Library/Application Support/local.diktat.app, ~/Moeder (kun hvis brugeren vil slette sine optagelser), ~/.whisper-models og ~/VoiceInk-Dependencies. Derefter certifikatet og til allersidst <DIKTAT_DIR>. Rækkefølge: FØRST certifikatet, med fuld sti, mens repoet stadig findes: "<DIKTAT_DIR>/scripts/setup-signing.sh" --remove (spørger først). SIDST repoet <DIKTAT_DIR> selv, for scriptet ligger i det. Slet aldrig repoet først.
+
+Slet de midlertidige logfiler i /tmp, som du selv har lavet. Spørg før du sletter noget andet.

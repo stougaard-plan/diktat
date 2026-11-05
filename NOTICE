@@ -1,0 +1,117 @@
+Diktat
+======
+
+Diktat er en ændret udgave af VoiceInk (https://github.com/Beingpax/VoiceInk).
+Det er IKKE VoiceInk-projektets officielle udgave, og VoiceInks ophavsmand står ikke bag Diktat.
+
+Original: VoiceInk af Pax (Prakash Joshi, GitHub: Beingpax), GNU General Public License version 3. Den fulde licenstekst står i filen LICENSE.
+Basis for ændringerne: VoiceInk commit 19546d2a7f85578f49efb538eb888b37ff2f8f8c (30. oktober 2026).
+VoiceInks udviklingshistorik følger ikke med her. Den ligger i VoiceInks eget repo.
+Diktat udgives som GNU GPL version 3 (kun v3), samme version som VoiceInk angiver.
+Ændringer i Diktat: Copyright (C) 2026 Stougaard Plan ApS, GPL v3
+Udgivet af Stougaard Plan ApS (CVR 45908941) som fri software, gratis, uden betaling for software eller personoplysninger og uden support.
+
+Ændringsnote (GPL v3 §5a)
+-------------------------
+
+Filerne i dette repo er ændret i forhold til VoiceInk i perioden 2. til 5. november 2026.
+Hvad der er ændret, i store træk. Den fulde forskel ses med git diff mod VoiceInk commit 19546d2a.
+
+Fjernet:
+- Licens- og prøveperiodekode, opdateringstjek (Sparkle), meddelelser, onboarding til VoiceInks betalte udgave.
+- Alle skyudbydere til tekstbehandling og transskription (OpenAI, Anthropic, Groq, Gemini, Mistral og andre) og tilhørende nøglestyring.
+- Pakken LLMkit.
+- iCloud- og push-rettigheder i entitlements.
+- Støtte for modellen VoiceInk-Refine-V1.
+
+Tilføjet:
+- Notetaker: optager computerens lyd og mikrofonen i to spor, gemmer i ~/Moeder, transskriberer efter mødet med scripts i scripts/transcribe, viser og kopierer transskript. Genvej til start og stop.
+- Valgfri mødetitel fra en Ollama-model, brugeren selv har sat op. Slået fra som standard.
+- Dansk brugerflade, dansk som standardsprog, synligt sprogvalg i modelvalget.
+- Oprydning af tekst gennem brugerens egen Ollama (valgfri, slået fra som standard), med faldback til rå tekst ved fejl.
+- Optagepaneler følger musens skærm og skjules ved skærmdeling (sharingType none).
+- Eget navn, ikon og bundle-id (local.diktat.app).
+- Byggescripts uden Apple-udviklerkonto: scripts/build-diktat.sh og scripts/setup-signing.sh (lokalt selvsigneret certifikat).
+- Tests i scripts/tests og målescripts i scripts/benchmark-sprog.
+- Dansk dokumentation: README.md, OPSAETNING_PROMPT.txt, BUILDING.md.
+
+Licenser for dele, modeller og biblioteker
+------------------------------------------
+
+Mærkning: LÆST betyder, at licensen er set i kilden af den, der forberedte udgivelsen, 5. november 2026.
+ANTAGET betyder, at det ikke er verificeret. Skal tjekkes af en jurist, før der gives garantier.
+Det her er ikke juridisk rådgivning.
+
+Biblioteker, der er med i appen (Swift-pakker, versioner i VoiceInk.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved. Efter fjernelsen af VoiceInk-Refine 5/11-2026 er det otte pakker):
+
+| Komponent | Licens | Status |
+|---|---|---|
+| FluidAudio | Apache 2.0 | LÆST (LICENSE i pakken) |
+| whisper.cpp (bygges til whisper.xcframework) | MIT | LÆST (LICENSE i kildekoden) |
+| Transcribe-cpp-swift | MIT | LÆST |
+| transcribe.cpp (handy-computer) | MIT | LÆST (GitHub-licens). ANTAGET at filen følger med i pakken |
+| mediaremote-adapter (Beingpax-fork) | BSD-3-Clause | LÆST (GitHub-licens). Pakken har ingen LICENSE-fil i kildetræet. ANTAGET at BSD-teksten skal følge med |
+| swift-markdown-ui, NetworkImage | MIT | LÆST |
+| swift-cmark | BSD-2 (cmark) | LÆST (COPYING). Underkomponenter ikke gennemgået |
+| ZIPFoundation | MIT | LÆST |
+| swift-atomics | Apache 2.0 | LÆST |
+
+FluidAudio: Ligger i FluidAudios pakke (G2P, NeMo Text Processing, fastcluster, vbx, KokoroANE). Ikke gennemlæst. Ikke del af dette repo, hentes ved bygning.
+Apache 2.0 kan indgå i et værk under GPL v3. MIT og BSD kan det også. ANTAGET, ikke juridisk afklaret.
+
+Filer i repoet:
+- VoiceInk/Resources/models/ggml-silero-v5.1.2.bin: Silero VAD i ggml-format. MIT, Copyright (c) 2020-present Silero Team (LÆST: https://github.com/snakers4/silero-vad/blob/master/LICENSE, 5. november 2026). Licensteksten står ordret nederst i denne fil.
+- Lyde i VoiceInk/Resources/Sounds: Videregives på de vilkår, VoiceInk udgav dem på. Ophav ikke undersøgt af Diktat. Er du rettighedshaver, så skriv til Diktats repo.
+- App-ikonet (Assets.xcassets/AppIcon) er tegnet til Diktat med scripts/make-icon.swift.
+
+Modeller, der hentes af brugeren (følger IKKE med i repoet):
+
+| Model | Licens | Status |
+|---|---|---|
+| Whisper-modeller fra ggerganov/whisper.cpp (ggml-*.bin), OpenAIs Whisper | MIT | LÆST (Hugging Face-mærke "mit") |
+| NVIDIA parakeet-tdt-0.6b-v3 | CC-BY-4.0, kræver kreditering | LÆST (Hugging Face-mærke, modelkort) |
+| FluidInference/parakeet-tdt-0.6b-v3-coreml (CoreML-udgave) | Mærket CC-BY-4.0 | LÆST. Modstrid på modelkortet noteret 5/11-2026. Den skrappeste (CC-BY-4.0) følges. |
+| FluidInference/parakeet-tdt-0.6b-v2-coreml, parakeet-unified-en-0.6b-coreml (hentes, hvis du vælger Parakeet V2 eller Unified) | Mærket CC-BY-4.0 | LÆST (Hugging Face-mærke 5/11-2026). Modelkort ikke gennemlæst |
+| FluidInference/Nemotron-3.5-ASR-Streaming-Multilingual-0.6b-CoreML, nemotron-speech-streaming-en-0.6b-coreml (hentes, hvis du vælger Nemotron) | Mærket "other" (NVIDIA) | Mærket LÆST, vilkårene IKKE læst. Læs dem på modelkortet, før du bruger modellen |
+| handy-computer/cohere-transcribe-03-2026-gguf (Cohere Transcribe) | Mærket Apache 2.0 | LÆST (Hugging Face-mærke 5/11-2026). Modelkort ikke gennemlæst |
+| SenseVoice Small (FunAudioLLM / Alibaba), handy-computer/SenseVoiceSmall-gguf | FunASR Model Open Source License Agreement, https://github.com/modelscope/FunASR/blob/main/MODEL_LICENSE | LÆST (version 1.1, kræver angivelse af kilde og modelnavn). Hentes af brugeren |
+| pyannote/speaker-diarization-3.1, pyannote/segmentation-3.0 | MIT, kræver accepteret brugervilkår på Hugging Face | LÆST (Hugging Face-mærke) |
+| pyannote/speaker-diarization-community-1 | CC-BY-4.0, kræver accepteret brugervilkår | LÆST (Hugging Face-mærke). Kreditering gælder for den, der bruger den |
+
+Python-pakker til valgfri talerseparation: pyannote.audio (MIT, ANTAGET), torch (BSD-3, ANTAGET), flere andre. Installeres af brugeren med requirements.txt og er ikke en del af dette repo. Pakken pyannote.audio trækker en klient til skytjenesten pyannoteAI med. Diktats scripts bruger den ikke.
+
+Værktøjer, brugeren selv installerer (distribueres ikke af Diktat): ffmpeg (LGPL eller GPL afhængigt af bygning), whisper-cpp (MIT), Python, Xcode (Apples vilkår), Ollama (MIT, ANTAGET).
+
+Til juridisk tjek
+-----------------
+
+Punkter, der ikke er afklaret og bør ses af en jurist, før repoet gøres offentligt:
+1. Om navnet "Diktat" og beskrivelsen "ændret udgave af VoiceInk" er tilstrækkeligt til at undgå forveksling med VoiceInk og dets varemærke.
+2. Om alle filer i repoet er under GPL v3 eller kompatible licenser (lydfilerne, VAD-modellen, ikonfiler arvet fra VoiceInk).
+3. Om kreditering af NVIDIA parakeet-tdt-0.6b-v3 og pyannote-modellerne er opfyldt (Om-siden i appen og denne fil).
+4. Om Hugging Face-vilkårene for de gatede pyannote-modeller tillader den brug, scripts/transcribe beskriver.
+
+Silero VAD, licenstekst (ordret)
+--------------------------------
+
+MIT License
+
+Copyright (c) 2020-present Silero Team
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
