@@ -123,6 +123,77 @@ Mødetransskription tager ca. 16 sekunder pr. minut lyd uden stemmeopdeling og c
 - I mappen `scripts/benchmark-sprog` ligger de scripts, der er brugt til at måle forkert sprog på korte klip. De bruger macOS' `say`, ingen optagelser.
 - Mål på din egen stemme og dit eget mikrofonmiljø. Lav 10 korte sætninger, læs dem op, og tæl selv, hvad der går galt.
 
+## Dansk talemodel (valgfri): Edda
+
+Edda v0.2 large er en dansk Whisper-model fra Alexandra Instituttet (udgivet af Danish Foundation Models) under Apache-2.0: https://huggingface.co/danish-foundation-models/edda-v0.2-large. Den følger ikke med i repoet. Du henter den selv og laver den om til det format, appen bruger.
+
+**Hvorfor.** I vores måling (100 klip fra FLEURS dansk, `ggml-large-v3-turbo-q5_0` mod Edda i q5_0) havde Edda ca. halvt så mange ordfejl: 7,7 % mod 13,7 %. På en oplæsning med fagord var forskellen lille i procent (16 mod 17 %), men Edda fik flere af fagordene rigtige (6 mod 11 forkerte). Edda skriver mere ordret, med «øh» og gentagelser, og den skriver tal som ord («paragraf nitten», ikke «§ 19»). Den er ca. 1,6 til 1,9 gange langsommere end turbo. Husk, at modelkortet siger, at Edda er trænet med FLEURS, så målingen favoriserer den. Prøv selv på din egen stemme.
+
+**Du skal bruge en udgave af appen fra november 2026 eller nyere** (den med `AudioChunker.swift`). Edda har ikke tidsstempel-tokens. Ældre udgaver kører Whisper med tidsstempler, og så gentager Edda afkodningen mange gange og bliver meget langsom eller taber tekst. Nu kører appen uden tidsstempler, og lyd over 28 sekunder deles ved det stilleste sted mellem 20 og 28 sekunder, så Whisper ikke springer tekst over ved sin 30-sekunders-grænse. Delingen sker uden overlap og kan i sjældne tilfælde ramme midt i et ord, hvis du ikke holder en pause. Det gælder for alle modeller, også turbo.
+
+Det gælder diktering. Mødetransskription bruger sin egen model og er ikke prøvet med Edda.
+
+Plads: regn med ca. 15 GB ledig, mens du laver modellen (vægtene fylder 3 GB, og Python-pakkerne flere). Slet mappen bagefter. Selve modellen fylder 1,1 GB.
+
+Det forudsætter opsætningen ovenfor: Homebrew, Xcode (med kommandolinjeværktøjerne) og en bygget app (`make whisper` og `make local`).
+
+1. **Lav en arbejdsmappe og et Python-miljø.** Torch og coremltools følger ikke altid med den nyeste Python, så vi bruger 3.12:
+   ```
+   brew install uv
+   mkdir -p ~/edda && cd ~/edda
+   uv venv --python 3.12 venv
+   uv pip install --python venv/bin/python "torch==2.15.*" "transformers==5.23.*" "numpy==2.5.*" "coremltools==9.0.*" openai-whisper ane_transformers huggingface_hub
+   ```
+   Versionerne er låst til dem, det er prøvet med. coremltools skriver, at torch er nyere end det, der er testet. Det virkede alligevel.
+2. **Hent whisper.cpp's konverteringsscripts** i den samme version som appen (samme linje som `WHISPER_CPP_REF` i Makefile), og OpenAIs repo (bruges til mel-filtre):
+   ```
+   git clone https://github.com/ggerganov/whisper.cpp.git
+   git -C whisper.cpp checkout 482279b8a18855ba741d7b88c30fcb3874691f59
+   git clone --depth 1 https://github.com/openai/whisper.git whisper-openai
+   ```
+3. **Hent modellen** (3,1 GB) fra Hugging Face. Det sker i terminalen og ikke i appen, så appens egen netværksliste ændrer sig ikke:
+   ```
+   mkdir -p model out
+   ok=ja
+   for f in added_tokens.json config.json generation_config.json merges.txt normalizer.json preprocessor_config.json special_tokens_map.json tokenizer.json tokenizer_config.json vocab.json model.safetensors; do
+     curl --fail --location -o model/$f https://huggingface.co/danish-foundation-models/edda-v0.2-large/resolve/main/$f || { ok=nej; echo "FEJL: $f blev ikke hentet"; break; }
+   done
+   echo "Alle filer hentet: $ok"
+   ```
+   Fortsæt kun, hvis der står `Alle filer hentet: ja`. Ellers: slet mappen `model` og kør trinnet igen.
+4. **Lav den om til ggml** (ca. 15 sekunder, giver en fil på 3,1 GB):
+   ```
+   venv/bin/python whisper.cpp/models/convert-h5-to-ggml.py model whisper-openai out
+   ```
+5. **Gør den mindre med q5_0** (ca. 6 sekunder, 1,1 GB). `whisper-quantize` følger med `brew install whisper-cpp` fra opsætningen ovenfor:
+   ```
+   whisper-quantize out/ggml-model.bin out/ggml-edda-v0.2-large-q5_0.bin q5_0
+   ```
+   Vil du prøve den uden appen først: `whisper-cli -m out/ggml-edda-v0.2-large-q5_0.bin -l da -nt -f <din-lydfil>.wav` (16 kHz, mono). Brug `-nt`, ellers hænger Edda, som beskrevet ovenfor.
+6. **Læg modellen i appen.** Enten under AI-modeller med «Hent lokal model ind…» og vælg `ggml-edda-v0.2-large-q5_0.bin`, eller kopiér filen selv og start appen igen:
+   ```
+   mkdir -p "$HOME/Library/Application Support/local.diktat.app/WhisperModels"
+   cp -c out/ggml-edda-v0.2-large-q5_0.bin "$HOME/Library/Application Support/local.diktat.app/WhisperModels/"
+   ```
+7. **Vælg den til diktering.** Under AI-modeller (aktiv model, gælder tilstanden «Diktering») vælger du `ggml-edda-v0.2-large-q5_0`. Vil du tilbage, vælger du `ggml-large-v3-turbo-q5_0` igen.
+
+### Hurtigere med Core ML-encoder (valgfrit)
+
+En Core ML-encoder gør Edda ca. 20 % hurtigere (appens tid for 30 sekunders diktat, målt på en MacBook med Apple silicon). Den første indlæsning efter at du har lagt den på plads tager et halvt til et helt minut, fordi macOS oversætter modellen én gang. Filen skal hedde modellens navn uden `-q5_0`, efterfulgt af `-encoder.mlmodelc`, og ligge ved siden af `.bin`-filen. Appens whisper.cpp bygges med Core ML (`make whisper`), så den finder filen af sig selv.
+
+```
+cd ~/edda/whisper.cpp
+export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+PATH="$HOME/edda/venv/bin:$PATH" python models/convert-h5-to-coreml.py --model-name large-v3 --model-path "$HOME/edda/model" --encoder-only True --quantize True
+xcrun coremlc compile models/coreml-encoder-large-v3.mlpackage models/
+mv models/coreml-encoder-large-v3.mlmodelc "$HOME/edda/out/ggml-edda-v0.2-large-encoder.mlmodelc"
+cp -c -R "$HOME/edda/out/ggml-edda-v0.2-large-encoder.mlmodelc" "$HOME/Library/Application Support/local.diktat.app/WhisperModels/"
+```
+
+Konverteringen tager ca. 4 minutter og giver en mappe på 1,2 GB. `--model-name large-v3` siger kun, at Edda har samme opbygning som Whisper large-v3. Vil du ikke have den, sletter du mappen `ggml-edda-v0.2-large-encoder.mlmodelc` i WhisperModels. Så kører appen som før.
+
+**Hvad der er prøvet, og hvad der ikke er.** Trin 1 til 5 og Core ML-konverteringen er kørt fra bunden 16/11-2026 på macOS 26.3 med Apple silicon. Modellen er prøvet med `whisper-cli` på en kort dansk sætning, også med Core ML-encoderen. Trin 6 og 7 (valg i appen) er ikke kørt i en ren bygning af den offentlige udgave. De bygger på kildekoden og på brug af den samme rettelse i den app, vi selv bruger.
+
 ## Status og begrænsninger
 
 Det her er et tidligt værktøj, ikke et færdigt produkt.
@@ -166,6 +237,7 @@ Den fulde liste med filer og linjer står i [NETVAERK.md](NETVAERK.md). Den er l
 - [Silero VAD](https://github.com/snakers4/silero-vad) (snakers4), MIT.
 - SenseVoice Small (FunAudioLLM / Alibaba), FunASR Model Open Source License Agreement, https://github.com/modelscope/FunASR/blob/main/MODEL_LICENSE. Hentes af brugeren.
 - [pyannote.audio](https://github.com/pyannote/pyannote-audio) og modellerne fra pyannote, når du slår stemmeopdeling til.
+- [Edda v0.2 large](https://huggingface.co/danish-foundation-models/edda-v0.2-large) fra Alexandra Instituttet (Danish Foundation Models), Apache 2.0, hvis du selv vælger den. Den følger ikke med i repoet.
 
 Licenser for alle dele og modeller står i [NOTICE](NOTICE). Det der ikke er verificeret, er mærket ANTAGET.
 

@@ -42,9 +42,16 @@ actor WhisperContext {
         // whisper.cpp tokenizes the prompt and retains its trailing tokens within its own context limit.
         prompt = [request.prompt ?? "", request.vocabulary?.terms.joined(separator: ", ") ?? ""]
             .filter { !$0.isEmpty }.joined(separator: "\n")
-        guard fullTranscribe(samples: samples) else { throw VoiceInkEngineError.whisperCoreFailed }
-        try Task.checkCancellation()
-        return getTranscription()
+        // Whisper kører uden tidsstempler (se no_timestamps nedenfor). Så taber den tekst, der falder over
+        // sit 30 s-vindue, og derfor deles lang lyd først i stykker ved det stilleste punkt (AudioChunker).
+        var pieces: [String] = []
+        for range in AudioChunker.ranges(samples: samples) {
+            let part = range.count == samples.count ? samples : Array(samples[range])
+            guard fullTranscribe(samples: part) else { throw VoiceInkEngineError.whisperCoreFailed }
+            try Task.checkCancellation()
+            pieces.append(getTranscription())
+        }
+        return pieces.count == 1 ? pieces[0] : pieces.map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }.joined(separator: " ")
     }
 
     func fullTranscribe(samples: [Float]) -> Bool {
@@ -77,6 +84,9 @@ actor WhisperContext {
         params.print_realtime = true
         params.print_progress = false
         params.print_timestamps = true
+        // Appen bruger kun segmenternes tekst, ikke deres tidspunkter. Nogle finjusterede modeller (fx Edda)
+        // mangler tidsstempel-tokens og gentager ellers afkodningen op til 24 gange og hænger.
+        params.no_timestamps = true
         params.print_special = false
         params.translate = false
         params.n_threads = Int32(maxThreads)

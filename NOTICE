@@ -14,7 +14,7 @@ Udgivet af Stougaard Plan ApS (CVR 45908941) som fri software, gratis, uden beta
 Ændringsnote (GPL v3 §5a)
 -------------------------
 
-Filerne i dette repo er ændret i forhold til VoiceInk i perioden 2. til 5. november 2026.
+Filerne i dette repo er ændret i forhold til VoiceInk i perioden 2. til 16. november 2026.
 Hvad der er ændret, i store træk. Den fulde forskel ses med git diff mod VoiceInk commit 19546d2a.
 
 Fjernet:
@@ -30,6 +30,7 @@ Tilføjet:
 - Dansk brugerflade, dansk som standardsprog, synligt sprogvalg i modelvalget.
 - Oprydning af tekst gennem brugerens egen Ollama (valgfri, slået fra som standard), med faldback til rå tekst ved fejl.
 - Optagepaneler følger musens skærm og skjules ved skærmdeling (sharingType none).
+- Dikteringen kører Whisper uden tidsstempler, og lang lyd deles i stykker på højst 28 sekunder ved det stilleste sted (AudioChunker.swift). Det gør det muligt at bruge finjusterede modeller uden tidsstempel-tokens, fx Edda.
 - Eget navn, ikon og bundle-id (local.diktat.app).
 - Byggescripts uden Apple-udviklerkonto: scripts/build-diktat.sh og scripts/setup-signing.sh (lokalt selvsigneret certifikat).
 - Tests i scripts/tests og målescripts i scripts/benchmark-sprog.
@@ -74,6 +75,7 @@ Modeller, der hentes af brugeren (følger IKKE med i repoet):
 | FluidInference/parakeet-tdt-0.6b-v2-coreml, parakeet-unified-en-0.6b-coreml (hentes, hvis du vælger Parakeet V2 eller Unified) | Mærket CC-BY-4.0 | LÆST (Hugging Face-mærke 5/11-2026). Modelkort ikke gennemlæst |
 | FluidInference/Nemotron-3.5-ASR-Streaming-Multilingual-0.6b-CoreML, nemotron-speech-streaming-en-0.6b-coreml (hentes, hvis du vælger Nemotron) | Mærket "other" (NVIDIA) | Mærket LÆST, vilkårene IKKE læst. Læs dem på modelkortet, før du bruger modellen |
 | handy-computer/cohere-transcribe-03-2026-gguf (Cohere Transcribe) | Mærket Apache 2.0 | LÆST (Hugging Face-mærke 5/11-2026). Modelkort ikke gennemlæst |
+| danish-foundation-models/edda-v0.2-large (Alexandra Instituttet, udgivet af Danish Foundation Models), finjusteret fra openai/whisper-large-v3 | Apache 2.0 (vægtene). Basismodellen er MIT. Træningsdata har egne licenser, se modelkortet | LÆST (modelkortet, 16. november 2026). Valgfri. Henvises til i README, men hentes og konverteres af brugeren selv og følger IKKE med i repoet. Træningsdata ikke gennemgået |
 | SenseVoice Small (FunAudioLLM / Alibaba), handy-computer/SenseVoiceSmall-gguf | FunASR Model Open Source License Agreement, https://github.com/modelscope/FunASR/blob/main/MODEL_LICENSE | LÆST (version 1.1, kræver angivelse af kilde og modelnavn). Hentes af brugeren |
 | pyannote/speaker-diarization-3.1, pyannote/segmentation-3.0 | MIT, kræver accepteret brugervilkår på Hugging Face | LÆST (Hugging Face-mærke) |
 | pyannote/speaker-diarization-community-1 | CC-BY-4.0, kræver accepteret brugervilkår | LÆST (Hugging Face-mærke). Kreditering gælder for den, der bruger den |

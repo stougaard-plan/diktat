@@ -160,6 +160,7 @@ TRIN 10. VALGFRIT, SPRING OVER MED MINDRE BRUGEREN BEDER OM DET
 --------------------------------------------------------------
 
 - Stemmeopdeling i møder (hvem der siger hvad blandt de andre). Kræver Python 3.12, flere GB pakker, en konto på huggingface.co og et token. I testen delte den én stemme i tre. Se scripts/transcribe/README.md. Gem aldrig tokenet i en fil. Foreslå det ikke af dig selv. Henter den modellerne, kræver det et SÆRSKILT ja til scripts/transcribe/setup-diarization.sh --hent-modeller. Uden det hentes der intet.
+- Dansk talemodel Edda (Alexandra Instituttet, Apache 2.0) til diktering. Valgfri og kun hvis brugeren selv beder om den. Foreslå den ikke af dig selv. Den hentes og konverteres på Macen, og trinene står i README.md under «Dansk talemodel (valgfri): Edda». Følg dem der, ét trin ad gangen, og spørg før hver installation og hver store download (Python-pakker på flere GB, modellen på 3,1 GB, ca. 15 GB plads i alt midlertidigt). Edda kræver den app, du lige har bygget. Core ML-encoderen i README er et endnu mere valgfrit tillæg. Kør kun, hvad README beskriver.
 - Mødetitel fra en lokal Ollama-model og oprydning af tekst. Begge er slået fra, og det skal de blive, med mindre brugeren selv har en Ollama kørende og beder om det.
 
 TRIN 11. FØRSTE OPSTART OG TILLADELSER
